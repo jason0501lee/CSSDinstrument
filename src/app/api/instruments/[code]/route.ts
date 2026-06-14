@@ -18,6 +18,7 @@ export async function GET(_req: Request, { params }: Ctx) {
         category: true,
         parent: { select: { code: true, name: true } },
         children: { select: { code: true, name: true, quantity: true } },
+        batches: { orderBy: { receivedDate: "desc" } },
         transactions: {
           orderBy: { createdAt: "desc" },
           take: 20,
@@ -60,7 +61,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
         where: { code },
         data: {
           name: body.name,
+          englishName: body.englishName,
           brand: body.brand,
+          model: body.model,
+          origin: body.origin,
           commonCode: body.commonCode,
           parentCode: body.parentCode,
           propertyNo: body.propertyNo,

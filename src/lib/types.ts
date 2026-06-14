@@ -5,6 +5,7 @@ export type InstrumentStatus = "ACTIVE" | "ARCHIVED" | "PENDING_DELETE";
 export type TxType =
   | "REGISTER"
   | "ADD"
+  | "PURCHASE"
   | "REDUCE"
   | "PACK"
   | "UNPACK"
@@ -23,7 +24,10 @@ export type SafeUser = {
 export type Instrument = {
   code: string;
   name: string;
+  englishName: string | null;
   brand: string | null;
+  model: string | null;
+  origin: string | null;
   departmentCode: string;
   categoryCode: string;
   commonCode: string | null;
@@ -35,6 +39,21 @@ export type Instrument = {
   note: string | null;
   department?: { name: string };
   category?: { name: string };
+};
+
+export type PurchaseBatch = {
+  id: string;
+  instrumentCode: string;
+  orderNo: string | null;
+  vendor: string | null;
+  partNo: string | null;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  lotNo: string | null;
+  expiryDate: string | null;
+  receivedDate: string;
+  note: string | null;
 };
 
 export type Pack = {
@@ -86,6 +105,7 @@ export type Category = { code: string; name: string };
 export const TX_LABEL: Record<TxType, string> = {
   REGISTER: "建檔",
   ADD: "增加",
+  PURCHASE: "進貨",
   REDUCE: "減損",
   PACK: "配包",
   UNPACK: "解包",

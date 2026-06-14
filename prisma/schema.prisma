@@ -37,6 +37,7 @@ enum InstrumentStatus {
 enum TxType {
   REGISTER // 器械建檔
   ADD // 器械增加作業
+  PURCHASE // 進貨入庫（新增進貨批次）
   REDUCE // 器械減損作業（報廢/遺失/移轉）
   PACK // 盤包配包作業
   UNPACK // 缺料解包作業
@@ -100,33 +101,38 @@ model Category {
 
 model Instrument {
   code           String           @id // 器械編號（主鍵），如 "GA001"
-  name           String // 品名
-  brand          String? // 廠牌
+  name           String // 中文品名
+  englishName    String? // 英文品名
+  brand          String? // 廠牌（製造商，如 Pilling）
+  model          String? // 型號 / 器械編號（廠牌型號，如 1815-3218）
+  origin         String? // 產地
   departmentCode String // 科別（編號首字母）
   categoryCode   String // 類別（編號次字母）
   commonCode     String? // 共同碼：不同廠牌共用同一碼
   parentCode     String? // 子代碼：指向主代碼，保留細分追蹤能力
   propertyNo     String? // 財產編號
   unit           String           @default("支")
-  quantity       Int              @default(0) // 目前庫存量
+  quantity       Int              @default(0) // 目前庫存量（品項總數）
   status         InstrumentStatus @default(ACTIVE)
   note           String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   archivedAt     DateTime?
 
-  department   Department    @relation(fields: [departmentCode], references: [code])
-  category     Category      @relation(fields: [categoryCode], references: [code])
-  parent       Instrument?   @relation("SubCode", fields: [parentCode], references: [code])
-  children     Instrument[]  @relation("SubCode")
+  department   Department      @relation(fields: [departmentCode], references: [code])
+  category     Category        @relation(fields: [categoryCode], references: [code])
+  parent       Instrument?     @relation("SubCode", fields: [parentCode], references: [code])
+  children     Instrument[]    @relation("SubCode")
   packItems    PackItem[]
   transactions Transaction[]
+  batches      PurchaseBatch[]
 
   @@index([departmentCode])
   @@index([categoryCode])
   @@index([commonCode])
   @@index([status])
   @@index([propertyNo])
+  @@index([model])
   @@map("instruments")
 }
 
@@ -173,6 +179,7 @@ model Transaction {
   type           TxType
   instrumentCode String?
   packId         String?
+  batchId        String? // 關聯進貨批次（進貨入庫 / 報廢核賠查價）
   quantityChange Int      @default(0) // 異動量：+ 增加 / - 減損
   reason         String? // 原因（報廢/遺失/移轉/缺料解包…）
   beforeQty      Int? // 異動前庫存
@@ -181,15 +188,48 @@ model Transaction {
   operatorId     String
   createdAt      DateTime @default(now())
 
-  instrument Instrument? @relation(fields: [instrumentCode], references: [code])
-  pack       Pack?       @relation(fields: [packId], references: [id])
-  operator   User        @relation(fields: [operatorId], references: [id])
+  instrument Instrument?    @relation(fields: [instrumentCode], references: [code])
+  pack       Pack?          @relation(fields: [packId], references: [id])
+  batch      PurchaseBatch? @relation(fields: [batchId], references: [id])
+  operator   User           @relation(fields: [operatorId], references: [id])
 
   @@index([instrumentCode])
   @@index([packId])
+  @@index([batchId])
   @@index([type])
   @@index([createdAt])
   @@map("transactions")
+}
+
+// ─────────────────────────────────────────────
+// 進貨批次（一支器械多筆進貨歷史，掛在器械品項底下）
+// 報廢 / 核賠時可對應批次，帶出當初 LOT 與單價。
+// ─────────────────────────────────────────────
+
+model PurchaseBatch {
+  id             String    @id @default(cuid())
+  instrumentCode String
+  orderNo        String? // 訂購單號
+  vendor         String? // 廠商（供應商，如 怡品實業）
+  partNo         String? // 料號（院內物料號）
+  quantity       Int // 進貨數量
+  unitPrice      Float // 單價
+  amount         Float // 金額（= 數量 × 單價）
+  lotNo          String? // LOT 批號
+  expiryDate     DateTime? // 效期
+  receivedDate   DateTime // 進貨（驗收）日期
+  note           String?
+  createdAt      DateTime  @default(now())
+
+  instrument   Instrument    @relation(fields: [instrumentCode], references: [code])
+  transactions Transaction[]
+
+  @@index([instrumentCode])
+  @@index([orderNo])
+  @@index([lotNo])
+  @@index([vendor])
+  @@index([partNo])
+  @@map("purchase_batches")
 }
 
 // ─────────────────────────────────────────────

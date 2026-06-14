@@ -54,7 +54,9 @@ export default function InstrumentsPage() {
 
       <div className="card flex flex-wrap items-end gap-3">
         <div className="min-w-[240px] flex-1">
-          <label className="label">全文搜尋（編號 / 品名 / 廠牌 / 財產編號 / 共同碼）</label>
+          <label className="label">
+            全文搜尋（編號 / 中英品名 / 廠牌 / 型號 / 財產編號 / 共同碼 / 訂購單號 / 廠商 / 料號 / LOT）
+          </label>
           <input
             className="input"
             placeholder="輸入關鍵字…"
@@ -209,7 +211,10 @@ function CreateModal({
   const [form, setForm] = useState({
     code: "",
     name: "",
+    englishName: "",
     brand: "",
+    model: "",
+    origin: "",
     propertyNo: "",
     commonCode: "",
     initialQty: 0,
@@ -268,7 +273,7 @@ function CreateModal({
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="label">品名</label>
+            <label className="label">中文品名</label>
             <input
               className="input"
               value={form.name}
@@ -276,11 +281,36 @@ function CreateModal({
             />
           </div>
           <div>
-            <label className="label">廠牌</label>
+            <label className="label">英文品名</label>
+            <input
+              className="input"
+              value={form.englishName}
+              onChange={(e) => setForm({ ...form, englishName: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">廠牌（製造商）</label>
             <input
               className="input"
               value={form.brand}
               onChange={(e) => setForm({ ...form, brand: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">型號 / 器械編號</label>
+            <input
+              className="input"
+              placeholder="如 1815-3218"
+              value={form.model}
+              onChange={(e) => setForm({ ...form, model: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">產地</label>
+            <input
+              className="input"
+              value={form.origin}
+              onChange={(e) => setForm({ ...form, origin: e.target.value })}
             />
           </div>
           <div>

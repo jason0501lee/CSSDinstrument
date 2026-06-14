@@ -54,17 +54,48 @@ async function main() {
 
   // ── 範例器械 ──
   const instruments = [
-    { code: "GA001", name: "梅氏彎剪 14cm", brand: "Aesculap", departmentCode: "G", categoryCode: "A", quantity: 12 },
-    { code: "GA002", name: "梅氏直剪 16cm", brand: "Aesculap", departmentCode: "G", categoryCode: "A", quantity: 8 },
-    { code: "GB001", name: "Adson 鑷子", brand: "B.Braun", departmentCode: "G", categoryCode: "B", quantity: 20 },
-    { code: "GC001", name: "Mayo-Hegar 持針器", brand: "Aesculap", departmentCode: "G", categoryCode: "C", quantity: 6 },
-    { code: "OD001", name: "Hohmann 拉鉤", brand: "Synthes", departmentCode: "O", categoryCode: "D", quantity: 2 },
+    { code: "GA001", name: "梅氏彎剪 14cm", englishName: "Metzenbaum Scissors Curved", brand: "Aesculap", model: "BC234R", origin: "德國", departmentCode: "G", categoryCode: "A", quantity: 12 },
+    { code: "GA002", name: "梅氏直剪 16cm", englishName: "Metzenbaum Scissors Straight", brand: "Aesculap", model: "BC236R", origin: "德國", departmentCode: "G", categoryCode: "A", quantity: 8 },
+    { code: "GB001", name: "Adson 鑷子", englishName: "Adson Tissue Forceps", brand: "B.Braun", model: "BD512R", origin: "德國", departmentCode: "G", categoryCode: "B", quantity: 20 },
+    { code: "GC001", name: "Mayo-Hegar 持針器", englishName: "Mayo-Hegar Needle Holder", brand: "Aesculap", model: "BM024R", origin: "德國", departmentCode: "G", categoryCode: "C", quantity: 6 },
+    { code: "OD001", name: "Hohmann 拉鉤", englishName: "Hohmann Retractor", brand: "Synthes", model: "1815-3218", origin: "瑞士", departmentCode: "O", categoryCode: "D", quantity: 2 },
   ];
   for (const i of instruments) {
     await prisma.instrument.upsert({
       where: { code: i.code },
       update: {},
       create: i,
+    });
+  }
+
+  // ── 範例進貨批次 ──
+  const hasBatch = await prisma.purchaseBatch.count();
+  if (hasBatch === 0) {
+    await prisma.purchaseBatch.createMany({
+      data: [
+        {
+          instrumentCode: "GA001",
+          orderNo: "LPF412251",
+          vendor: "怡品實業有限公司",
+          partNo: "14800000",
+          quantity: 12,
+          unitPrice: 480,
+          amount: 5760,
+          lotNo: "K06D510",
+          receivedDate: new Date("2025-03-12"),
+        },
+        {
+          instrumentCode: "OD001",
+          orderNo: "LPF418800",
+          vendor: "立蕘醫材",
+          partNo: "19909001",
+          quantity: 2,
+          unitPrice: 5200,
+          amount: 10400,
+          lotNo: "S21A097",
+          receivedDate: new Date("2026-01-08"),
+        },
+      ],
     });
   }
 

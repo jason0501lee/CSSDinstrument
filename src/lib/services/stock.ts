@@ -9,13 +9,14 @@ type StockChangeParams = {
   type: TxType;
   reason?: string | null;
   note?: string | null;
+  batchId?: string | null; // 報廢核賠：對應進貨批次
   operator: User;
   allowNegative?: boolean;
 };
 
 // 原子化執行庫存異動：更新庫存 + 產生交易序號 + 寫稽核日誌
 export async function applyStockChange(params: StockChangeParams) {
-  const { instrumentCode, delta, type, reason, note, operator } = params;
+  const { instrumentCode, delta, type, reason, note, batchId, operator } = params;
 
   return prisma.$transaction(async (tx) => {
     const inst = await tx.instrument.findUnique({
@@ -43,6 +44,7 @@ export async function applyStockChange(params: StockChangeParams) {
         serial,
         type,
         instrumentCode,
+        batchId: batchId ?? null,
         quantityChange: delta,
         reason: reason ?? null,
         beforeQty: inst.quantity,

@@ -13,7 +13,10 @@ export const instrumentCodeSchema = z
 export const createInstrumentSchema = z.object({
   code: instrumentCodeSchema,
   name: z.string().trim().min(1, "品名不可空白").max(100),
+  englishName: z.string().trim().max(150).optional().nullable(),
   brand: z.string().trim().max(100).optional().nullable(),
+  model: z.string().trim().max(100).optional().nullable(),
+  origin: z.string().trim().max(100).optional().nullable(),
   commonCode: z.string().trim().max(50).optional().nullable(),
   parentCode: instrumentCodeSchema.optional().nullable(),
   propertyNo: z.string().trim().max(50).optional().nullable(),
@@ -24,11 +27,27 @@ export const createInstrumentSchema = z.object({
 
 export const updateInstrumentSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
+  englishName: z.string().trim().max(150).optional().nullable(),
   brand: z.string().trim().max(100).optional().nullable(),
+  model: z.string().trim().max(100).optional().nullable(),
+  origin: z.string().trim().max(100).optional().nullable(),
   commonCode: z.string().trim().max(50).optional().nullable(),
   parentCode: instrumentCodeSchema.optional().nullable(),
   propertyNo: z.string().trim().max(50).optional().nullable(),
   unit: z.string().trim().max(10).optional(),
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+// 進貨批次
+export const purchaseBatchSchema = z.object({
+  orderNo: z.string().trim().max(50).optional().nullable(),
+  vendor: z.string().trim().max(100).optional().nullable(),
+  partNo: z.string().trim().max(50).optional().nullable(),
+  quantity: z.coerce.number().int().min(1, "進貨數量須 ≥ 1").max(100000),
+  unitPrice: z.coerce.number().min(0, "單價不可為負").max(100000000),
+  lotNo: z.string().trim().max(50).optional().nullable(),
+  expiryDate: z.string().trim().optional().nullable(),
+  receivedDate: z.string().trim().min(1, "請填進貨日期"),
   note: z.string().trim().max(500).optional().nullable(),
 });
 
@@ -42,6 +61,7 @@ export const reduceStockSchema = z.object({
   reason: z.enum(["SCRAP", "LOST", "TRANSFER"], {
     errorMap: () => ({ message: "原因須為 報廢 / 遺失 / 移轉" }),
   }),
+  batchId: z.string().trim().optional().nullable(), // 核賠：對應進貨批次以帶出單價
   note: z.string().trim().max(500).optional().nullable(),
 });
 

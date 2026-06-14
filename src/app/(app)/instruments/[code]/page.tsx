@@ -3,12 +3,15 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
-import { TX_LABEL, type TxType } from "@/lib/types";
+import { TX_LABEL, type PurchaseBatch, type TxType } from "@/lib/types";
 
 type Detail = {
   code: string;
   name: string;
+  englishName: string | null;
   brand: string | null;
+  model: string | null;
+  origin: string | null;
   departmentCode: string;
   categoryCode: string;
   commonCode: string | null;
@@ -19,6 +22,7 @@ type Detail = {
   note: string | null;
   department: { name: string };
   category: { name: string };
+  batches: PurchaseBatch[];
   transactions: {
     id: string;
     serial: string;
@@ -33,6 +37,8 @@ type Detail = {
   }[];
 };
 
+type Action = "add" | "reduce" | "edit" | "purchase";
+
 export default function InstrumentDetailPage({
   params,
 }: {
@@ -41,7 +47,7 @@ export default function InstrumentDetailPage({
   const { code } = use(params);
   const [data, setData] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [action, setAction] = useState<null | "add" | "reduce" | "edit">(null);
+  const [action, setAction] = useState<Action | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -89,10 +95,19 @@ export default function InstrumentDetailPage({
                 <span className="badge bg-emerald-100 text-emerald-700">啟用</span>
               )}
             </div>
-            <p className="mt-1 text-lg text-slate-700">{data.name}</p>
+            <p className="mt-1 text-lg text-slate-700">
+              {data.name}
+              {data.englishName && (
+                <span className="ml-2 text-sm text-slate-400">
+                  {data.englishName}
+                </span>
+              )}
+            </p>
             <p className="mt-1 text-sm text-slate-400">
               {data.department.name} / {data.category.name}
-              {data.brand && ` · ${data.brand}`}
+              {data.brand && ` · 廠牌 ${data.brand}`}
+              {data.model && ` · 型號 ${data.model}`}
+              {data.origin && ` · 產地 ${data.origin}`}
               {data.propertyNo && ` · 財產編號 ${data.propertyNo}`}
               {data.commonCode && ` · 共同碼 ${data.commonCode}`}
             </p>
@@ -110,7 +125,10 @@ export default function InstrumentDetailPage({
 
         {!archived && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-            <button className="btn-primary" onClick={() => setAction("add")}>
+            <button className="btn-primary" onClick={() => setAction("purchase")}>
+              進貨
+            </button>
+            <button className="btn-ghost" onClick={() => setAction("add")}>
               增加
             </button>
             <button className="btn-ghost" onClick={() => setAction("reduce")}>
@@ -120,6 +138,49 @@ export default function InstrumentDetailPage({
               編輯
             </button>
             <ArchiveButton code={code} onDone={load} />
+          </div>
+        )}
+      </div>
+
+      {/* 進貨批次 */}
+      <div className="card">
+        <h2 className="mb-3 font-semibold text-slate-700">
+          進貨批次{" "}
+          <span className="text-sm font-normal text-slate-400">
+            （{data.batches.length} 筆 · 報廢核賠可查當初單價）
+          </span>
+        </h2>
+        {data.batches.length === 0 ? (
+          <p className="text-sm text-slate-400">尚無進貨紀錄</p>
+        ) : (
+          <div className="space-y-2">
+            {data.batches.map((b) => (
+              <div
+                key={b.id}
+                className="rounded-md border border-slate-100 p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-slate-700">
+                    {b.receivedDate.slice(0, 10)} · 進 {b.quantity} {data.unit}
+                  </span>
+                  <span className="text-slate-600">
+                    單價 ${b.unitPrice} · 金額 ${b.amount}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {[
+                    b.vendor && `廠商 ${b.vendor}`,
+                    b.orderNo && `單號 ${b.orderNo}`,
+                    b.partNo && `料號 ${b.partNo}`,
+                    b.lotNo && `LOT ${b.lotNo}`,
+                    b.expiryDate && `效期 ${b.expiryDate.slice(0, 10)}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                  {b.note && ` · ${b.note}`}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -223,7 +284,17 @@ export default function InstrumentDetailPage({
         </div>
       </div>
 
-      {action && (
+      {action === "purchase" && (
+        <PurchaseModal
+          code={code}
+          onClose={() => setAction(null)}
+          onDone={() => {
+            setAction(null);
+            load();
+          }}
+        />
+      )}
+      {action && action !== "purchase" && (
         <ActionModal
           code={code}
           mode={action}
@@ -265,6 +336,167 @@ function ArchiveButton({ code, onDone }: { code: string; onDone: () => void }) {
   );
 }
 
+function PurchaseModal({
+  code,
+  onClose,
+  onDone,
+}: {
+  code: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    receivedDate: today,
+    quantity: 1,
+    unitPrice: 0,
+    vendor: "",
+    orderNo: "",
+    partNo: "",
+    lotNo: "",
+    expiryDate: "",
+    note: "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const amount = Math.round(form.quantity * form.unitPrice * 100) / 100;
+
+  async function save() {
+    setError(null);
+    setBusy(true);
+    try {
+      await api(`/api/instruments/${code}/batches`, {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      onDone();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+      <div className="card max-h-full w-full max-w-lg space-y-3 overflow-y-auto">
+        <h2 className="text-lg font-bold text-slate-800">
+          新增進貨 · <span className="font-mono">{code}</span>
+        </h2>
+        <p className="rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          進貨後將自動把數量加入庫存，並產生「進貨」交易序號。
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">進貨日期</label>
+            <input
+              type="date"
+              className="input"
+              value={form.receivedDate}
+              onChange={(e) => setForm({ ...form, receivedDate: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">廠商（供應商）</label>
+            <input
+              className="input"
+              value={form.vendor}
+              onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">數量</label>
+            <input
+              type="number"
+              min={1}
+              className="input"
+              value={form.quantity}
+              onChange={(e) =>
+                setForm({ ...form, quantity: Number(e.target.value) })
+              }
+            />
+          </div>
+          <div>
+            <label className="label">單價</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="input"
+              value={form.unitPrice}
+              onChange={(e) =>
+                setForm({ ...form, unitPrice: Number(e.target.value) })
+              }
+            />
+          </div>
+          <div>
+            <label className="label">訂購單號</label>
+            <input
+              className="input"
+              value={form.orderNo}
+              onChange={(e) => setForm({ ...form, orderNo: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">料號（院內物料號）</label>
+            <input
+              className="input"
+              value={form.partNo}
+              onChange={(e) => setForm({ ...form, partNo: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">LOT 批號</label>
+            <input
+              className="input"
+              value={form.lotNo}
+              onChange={(e) => setForm({ ...form, lotNo: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">效期</label>
+            <input
+              type="date"
+              className="input"
+              value={form.expiryDate}
+              onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="label">備註（選填）</label>
+          <input
+            className="input"
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+          />
+        </div>
+        <p className="text-right text-sm text-slate-500">
+          金額：<span className="font-semibold text-slate-700">${amount}</span>
+        </p>
+        {error && (
+          <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-600">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button className="btn-ghost" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="btn-primary"
+            disabled={busy || form.quantity < 1 || !form.receivedDate}
+            onClick={save}
+          >
+            {busy ? "處理中…" : "確認進貨"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActionModal({
   code,
   mode,
@@ -280,10 +512,14 @@ function ActionModal({
 }) {
   const [qty, setQty] = useState(1);
   const [reason, setReason] = useState("SCRAP");
+  const [batchId, setBatchId] = useState("");
   const [note, setNote] = useState("");
   const [edit, setEdit] = useState({
     name: current.name,
+    englishName: current.englishName ?? "",
     brand: current.brand ?? "",
+    model: current.model ?? "",
+    origin: current.origin ?? "",
     propertyNo: current.propertyNo ?? "",
     commonCode: current.commonCode ?? "",
   });
@@ -302,7 +538,7 @@ function ActionModal({
       } else if (mode === "reduce") {
         await api(`/api/instruments/${code}/reduce`, {
           method: "POST",
-          body: JSON.stringify({ quantity: qty, reason, note }),
+          body: JSON.stringify({ quantity: qty, reason, batchId: batchId || null, note }),
         });
       } else {
         await api(`/api/instruments/${code}`, {
@@ -322,8 +558,8 @@ function ActionModal({
     mode === "add" ? "器械增加" : mode === "reduce" ? "器械減損" : "編輯器械資料";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="card w-full max-w-md space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+      <div className="card max-h-full w-full max-w-md space-y-4 overflow-y-auto">
         <h2 className="text-lg font-bold text-slate-800">
           {title} · <span className="font-mono">{code}</span>
         </h2>
@@ -348,18 +584,38 @@ function ActionModal({
         )}
 
         {mode === "reduce" && (
-          <div>
-            <label className="label">原因</label>
-            <select
-              className="input"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            >
-              <option value="SCRAP">報廢</option>
-              <option value="LOST">遺失</option>
-              <option value="TRANSFER">移轉</option>
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="label">原因</label>
+              <select
+                className="input"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              >
+                <option value="SCRAP">報廢</option>
+                <option value="LOST">遺失</option>
+                <option value="TRANSFER">移轉</option>
+              </select>
+            </div>
+            {current.batches.length > 0 && (
+              <div>
+                <label className="label">對應進貨批次（核賠查價，選填）</label>
+                <select
+                  className="input"
+                  value={batchId}
+                  onChange={(e) => setBatchId(e.target.value)}
+                >
+                  <option value="">不指定</option>
+                  {current.batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.receivedDate.slice(0, 10)} · 單價 ${b.unitPrice}
+                      {b.lotNo ? ` · LOT ${b.lotNo}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </>
         )}
 
         {mode === "edit" && (
@@ -368,21 +624,47 @@ function ActionModal({
               系統將自動產生 EDIT 交易序號並記錄變更前後值，無需手動查序號。
               器械編號為主鍵，不可更改。
             </p>
-            <div>
-              <label className="label">品名</label>
-              <input
-                className="input"
-                value={edit.name}
-                onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-              />
-            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">中文品名</label>
+                <input
+                  className="input"
+                  value={edit.name}
+                  onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">英文品名</label>
+                <input
+                  className="input"
+                  value={edit.englishName}
+                  onChange={(e) =>
+                    setEdit({ ...edit, englishName: e.target.value })
+                  }
+                />
+              </div>
               <div>
                 <label className="label">廠牌</label>
                 <input
                   className="input"
                   value={edit.brand}
                   onChange={(e) => setEdit({ ...edit, brand: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">型號 / 器械編號</label>
+                <input
+                  className="input"
+                  value={edit.model}
+                  onChange={(e) => setEdit({ ...edit, model: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">產地</label>
+                <input
+                  className="input"
+                  value={edit.origin}
+                  onChange={(e) => setEdit({ ...edit, origin: e.target.value })}
                 />
               </div>
               <div>

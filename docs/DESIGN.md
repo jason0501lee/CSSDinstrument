@@ -14,7 +14,8 @@
 | **users** | id, username⊙, displayName, passwordHash, role(ADMIN/OPERATOR/READONLY), active | 1—N transactions、audit_logs |
 | **departments** | code(PK, 科別首字母), name | 1—N instruments |
 | **categories** | code(PK, 類別首字母), name | 1—N instruments |
-| **instruments** | code(PK 器械編號), name, brand, departmentCode→, categoryCode→, commonCode, parentCode→self, propertyNo, unit, quantity, status, archivedAt | N—1 department/category、自參照 parent/children、1—N pack_items/transactions |
+| **instruments** | code(PK 器械編號), name(中文名), englishName(英文名), brand(廠牌), model(型號/器械編號), origin(產地), departmentCode→, categoryCode→, commonCode, parentCode→self, propertyNo, unit, quantity(品項總數), status, archivedAt | N—1 department/category、自參照 parent/children、1—N pack_items/transactions/batches |
+| **purchase_batches** | id, instrumentCode→, orderNo(訂購單號), vendor(廠商), partNo(料號), quantity, unitPrice(單價), amount(金額), lotNo(LOT批號), expiryDate(效期), receivedDate(進貨日期) | N—1 instrument、1—N transactions |
 | **packs** | id, code⊙, name, description, active | 1—N pack_items/transactions |
 | **pack_items** | id, packId→, instrumentCode→, standardQty | N—1 pack/instrument，(packId,instrumentCode) 唯一 |
 | **transactions** | id, serial⊙(交易序號), type, instrumentCode→, packId→, quantityChange, reason, beforeQty, afterQty, operatorId→ | N—1 instrument/pack/user |
@@ -45,6 +46,7 @@
 | POST | `/api/instruments/[code]/add` | 器械增加 | instrument:write |
 | POST | `/api/instruments/[code]/reduce` | 器械減損（報廢/遺失/移轉） | instrument:write |
 | POST | `/api/instruments/[code]/archive` | 封存器械 | instrument:write |
+| POST | `/api/instruments/[code]/batches` | 新增進貨批次（自動入庫） | instrument:write |
 | GET | `/api/packs` | 盤包清單 | pack:read |
 | POST | `/api/packs` | 建立盤包 | pack:write |
 | GET | `/api/packs/[id]` | 盤包內容查詢 | pack:read |

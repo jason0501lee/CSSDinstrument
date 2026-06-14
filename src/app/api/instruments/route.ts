@@ -27,9 +27,25 @@ export async function GET(req: Request) {
       where.OR = [
         { code: { contains: q, mode: "insensitive" } },
         { name: { contains: q, mode: "insensitive" } },
+        { englishName: { contains: q, mode: "insensitive" } },
         { brand: { contains: q, mode: "insensitive" } },
+        { model: { contains: q, mode: "insensitive" } },
+        { origin: { contains: q, mode: "insensitive" } },
         { propertyNo: { contains: q, mode: "insensitive" } },
         { commonCode: { contains: q, mode: "insensitive" } },
+        // 進貨批次任一條件（訂購單號 / 廠商 / 料號 / LOT批號）
+        {
+          batches: {
+            some: {
+              OR: [
+                { orderNo: { contains: q, mode: "insensitive" } },
+                { vendor: { contains: q, mode: "insensitive" } },
+                { partNo: { contains: q, mode: "insensitive" } },
+                { lotNo: { contains: q, mode: "insensitive" } },
+              ],
+            },
+          },
+        },
       ];
     }
     if (department) where.departmentCode = department;
@@ -85,7 +101,10 @@ export async function POST(req: Request) {
         data: {
           code: body.code,
           name: body.name,
+          englishName: body.englishName ?? null,
           brand: body.brand ?? null,
+          model: body.model ?? null,
+          origin: body.origin ?? null,
           departmentCode,
           categoryCode,
           commonCode: body.commonCode ?? null,
