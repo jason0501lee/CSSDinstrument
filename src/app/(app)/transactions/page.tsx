@@ -98,7 +98,8 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <div className="card overflow-x-auto p-0">
+      {/* 桌面：表格 */}
+      <div className="card hidden overflow-x-auto p-0 md:block">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -168,6 +169,63 @@ export default function TransactionsPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* 手機：卡片 */}
+      <div className="space-y-3 md:hidden">
+        {loading ? (
+          <p className="py-8 text-center text-slate-400">載入中…</p>
+        ) : list.length === 0 ? (
+          <p className="py-8 text-center text-slate-400">查無交易</p>
+        ) : (
+          list.map((t) => (
+            <div key={t.id} className="card space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-xs text-slate-400">
+                  {t.serial}
+                </span>
+                <span className="badge bg-slate-100 text-slate-600">
+                  {TX_LABEL[t.type]}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono">
+                  {t.instrumentCode ? (
+                    <Link
+                      href={`/instruments/${t.instrumentCode}`}
+                      className="text-brand hover:underline"
+                    >
+                      {t.instrumentCode}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </span>
+                <span
+                  className={`font-medium ${
+                    t.quantityChange > 0
+                      ? "text-emerald-600"
+                      : t.quantityChange < 0
+                        ? "text-rose-600"
+                        : "text-slate-400"
+                  }`}
+                >
+                  {t.quantityChange > 0 ? "+" : ""}
+                  {t.quantityChange}
+                </span>
+              </div>
+              {(t.reason || t.note) && (
+                <p className="text-sm text-slate-500">
+                  {[t.reason, t.note].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              <p className="text-xs text-slate-400">
+                {t.operator?.displayName} ·{" "}
+                {new Date(t.createdAt).toLocaleString("zh-TW")}
+              </p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

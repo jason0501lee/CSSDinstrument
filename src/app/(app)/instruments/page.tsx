@@ -79,7 +79,8 @@ export default function InstrumentsPage() {
         </button>
       </div>
 
-      <div className="card overflow-x-auto p-0">
+      {/* 桌面：表格 */}
+      <div className="card hidden overflow-x-auto p-0 md:block">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -136,6 +137,47 @@ export default function InstrumentsPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* 手機：卡片 */}
+      <div className="space-y-3 md:hidden">
+        {loading ? (
+          <p className="py-8 text-center text-slate-400">載入中…</p>
+        ) : list.length === 0 ? (
+          <p className="py-8 text-center text-slate-400">查無資料</p>
+        ) : (
+          list.map((i) => (
+            <Link
+              key={i.code}
+              href={`/instruments/${i.code}`}
+              className="card flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="font-mono text-sm text-brand">{i.code}</p>
+                <p className="truncate font-medium text-slate-800">{i.name}</p>
+                <p className="truncate text-xs text-slate-400">
+                  {i.department?.name ?? i.departmentCode} /{" "}
+                  {i.category?.name ?? i.categoryCode}
+                  {i.brand && ` · ${i.brand}`}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-lg font-bold text-slate-800">
+                  {i.quantity}
+                  <span className="text-xs font-normal text-slate-400">
+                    {" "}
+                    {i.unit}
+                  </span>
+                </p>
+                {i.status === "ARCHIVED" ? (
+                  <span className="badge bg-slate-200 text-slate-600">已封存</span>
+                ) : (
+                  <span className="badge bg-emerald-100 text-emerald-700">啟用</span>
+                )}
+              </div>
+            </Link>
+          ))
+        )}
       </div>
 
       {showCreate && (
@@ -224,7 +266,7 @@ function CreateModal({
             )}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="label">品名</label>
             <input

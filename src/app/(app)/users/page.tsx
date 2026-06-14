@@ -40,7 +40,8 @@ export default function UsersPage() {
         </button>
       </div>
 
-      <div className="card overflow-x-auto p-0">
+      {/* 桌面：表格 */}
+      <div className="card hidden overflow-x-auto p-0 md:block">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -69,6 +70,25 @@ export default function UsersPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* 手機：卡片 */}
+      <div className="space-y-3 md:hidden">
+        {users.map((u) => (
+          <div key={u.id} className="card flex items-center justify-between">
+            <div>
+              <p className="font-mono text-sm text-slate-700">{u.username}</p>
+              <p className="text-xs text-slate-400">
+                {u.displayName} · {ROLE_LABEL[u.role]}
+              </p>
+            </div>
+            {u.active ? (
+              <span className="badge bg-emerald-100 text-emerald-700">啟用</span>
+            ) : (
+              <span className="badge bg-slate-200 text-slate-600">停用</span>
+            )}
+          </div>
+        ))}
       </div>
 
       {showCreate && (
@@ -120,7 +140,7 @@ function CreateUserModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="card w-full max-w-md space-y-4">
         <h2 className="text-lg font-bold text-slate-800">新增帳號</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="label">帳號</label>
             <input

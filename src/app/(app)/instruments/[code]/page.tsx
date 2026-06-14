@@ -126,7 +126,7 @@ export default function InstrumentDetailPage({
 
       <div className="card overflow-x-auto p-0">
         <h2 className="px-4 pt-4 font-semibold text-slate-700">交易紀錄</h2>
-        <table className="mt-2 w-full text-sm">
+        <table className="mt-2 hidden w-full text-sm md:table">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-2">交易序號</th>
@@ -175,6 +175,52 @@ export default function InstrumentDetailPage({
             ))}
           </tbody>
         </table>
+
+        {/* 手機：交易卡片 */}
+        <div className="space-y-2 p-3 md:hidden">
+          {data.transactions.length === 0 ? (
+            <p className="py-4 text-center text-slate-400">尚無交易紀錄</p>
+          ) : (
+            data.transactions.map((t) => (
+              <div key={t.id} className="rounded-md border border-slate-100 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs text-slate-400">
+                    {t.serial}
+                  </span>
+                  <span className="badge bg-slate-100 text-slate-600">
+                    {TX_LABEL[t.type]}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-sm text-slate-500">
+                    {t.beforeQty} → {t.afterQty}
+                  </span>
+                  <span
+                    className={`font-medium ${
+                      t.quantityChange > 0
+                        ? "text-emerald-600"
+                        : t.quantityChange < 0
+                          ? "text-rose-600"
+                          : "text-slate-400"
+                    }`}
+                  >
+                    {t.quantityChange > 0 ? "+" : ""}
+                    {t.quantityChange}
+                  </span>
+                </div>
+                {(t.reason || t.note) && (
+                  <p className="mt-1 text-sm text-slate-500">
+                    {[t.reason, t.note].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-slate-400">
+                  {t.operator.displayName} ·{" "}
+                  {new Date(t.createdAt).toLocaleString("zh-TW")}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {action && (
@@ -330,7 +376,7 @@ function ActionModal({
                 onChange={(e) => setEdit({ ...edit, name: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="label">廠牌</label>
                 <input
