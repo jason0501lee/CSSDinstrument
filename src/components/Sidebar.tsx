@@ -18,6 +18,7 @@ export function Sidebar({ user }: { user: SafeUser }) {
     { href: "/dashboard", label: "總覽", show: true },
     { href: "/instruments", label: "器械管理", show: true },
     { href: "/packs", label: "盤包配包", show: true },
+    { href: "/purchases", label: "進貨採購", show: true },
     { href: "/transactions", label: "交易查詢", show: true },
     { href: "/audit", label: "我的操作紀錄", show: true },
     { href: "/users", label: "用戶管理", show: can(user.role, "user:manage") },
